@@ -1,0 +1,23 @@
+language: perl
+
+os:
+  - linux
+  # - osx
+
+# services:
+  # - docker
+
+perl:
+  - "5.22"
+  - "5.20"
+  - "5.18"
+  - "5.16"
+  - "5.14"
+  - "5.12"
+
+install:
+  - cpanm --skip-satisfied -n -q Gedcom Getopt::Std Lingua::EN::NameCase Lingua::EN::NameParse warnings::unused autodie IPC::System::Simple B::Lint
+
+script:
+  - perl -MO=Lint ./radial
+  - perl -c -Mwarnings::unused ./radial

@@ -22,7 +22,6 @@ use autodie qw(:all);
 
 use Gedcom;
 use Getopt::Std;
-# use Geo::Coder::Canada;
 use Lingua::EN::NameCase;
 use Lingua::EN::NameParse;
 no lib '.';
@@ -56,6 +55,10 @@ sub print_person
 	my $level = $params{'level'} || 1;
 
 	return if($opts{'m'} && ($level > $opts{'m'}));
+
+	unless($opts{'l'}) {
+		return unless($person->get_value('death date'));
+	}
 
 	print "\t" x $level,
 		'{"name": "', $person->as_string(), '"';

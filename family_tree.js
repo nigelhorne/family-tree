@@ -1,22 +1,17 @@
-var family_tree = {
-	"name": "great grandfather", "spouse": "great grandmother", "children": [
-		{"name": "grandmother", "spouse": "grandfather", "children": [
-			{"name": "aunt", "spouse": "uncle"},
-			{"name": "father", "spouse": "mother", "children": [
-				{"name": "sister", "spouse": "brother-in-law", "children": [
-					{"name": "nephew"}
-				]},
-				{"name": "me", "spouse": "spouse"},
-				{"name": "brother"}
-			]}
+var family_tree = 
+	{"name": "Isaac Horne", "spouse": "May Spratt", "children": [
+		{"name": "Isaac Horne"},
+		{"name": "Ernest Horne"},
+		{"name": "Gladys Horne"},
+		{"name": "Wilfred Horne", "spouse": "Hilda Wood", "children": [
+			{"name": "Hilary Horne", "spouse": "Michael Maxey", "children": [
+			]},
 		]},
-		{"name": "great uncle", "spouse": "great aunt", "children": [
-			{"name": "first cousin once removed", "children": [
-				{"name": "second cousin"},
-				{"name": "second second cousin"},
-				{"name": "last second cousin"}
-			]}
+		{"name": "Edmund Horne", "spouse": "Joyce Cowell", "children": [
+			{"name": "David Horne"},
+			{"name": "Diane Horne"},
 		]},
-		{"name": "great uncle"}
+		{"name": "Frederick Horne", "spouse": "Ivy Benstead"},
+		{"name": "Ronald Horne"},
 	]
 }
