@@ -1,0 +1,249 @@
+#!/usr/bin/env perl
+
+# Author Nigel Horne: njh@bandsman.co.uk
+# Copyright (C) 2016, Nigel Horne
+
+# Usage is subject to licence terms.
+# The licence terms of this software are as follows:
+# Personal single user, single computer use: GPL2
+# All other users (including Commercial, Charity, Educational, Government)
+#	must apply in writing for a licence for use from Nigel Horne at the
+#	above e-mail.
+
+
+use strict;
+use warnings;
+use autodie qw(:all);
+# use diagnostics;
+# use warnings::unused;
+
+use Gedcom;
+use Getopt::Std;
+# use Geo::Coder::Canada;
+use Lingua::EN::NameCase;
+use Lingua::EN::NameParse;
+no lib '.';
+
+my %opts;
+getopts('hp:', \%opts);
+die "Usage: $0 [ -l ] [ -p person-to-print ] filename\n" unless($ARGV[0]);
+
+my $home;
+
+my $ged = Gedcom->new(gedcom_file => $ARGV[0], read_only => 1);
+
+die "-p is not optional" unless($opts{p});
+
+unless($home = $ged->get_individual($opts{p})) {
+	die "$0: Can't find '$opts{h}' in $ARGV[0]";
+}
+
+my $nameparser = Lingua::EN::NameParse->new(extended_titles => 1, initials => 1);
+
+print "var family_tree = \n";
+print_person(person => $home);
+print "}\n";
+
+sub print_person
+{
+	my %params = (ref($_[0]) eq 'HASH') ? %{$_[0]} : @_;
+
+	# Gather the information on this person
+	my $person = $params{'person'} or die "Who do you want to print?";
+	my $level = $params{'level'} || 1;
+
+	print "\t" x $level;
+
+	print '{"name": "', $person->as_string(), '"';
+
+	if(my $spouse = $person->spouse()) {
+		print ', "spouse": "', $spouse->as_string(), '"';
+	}
+
+	my @children;
+	foreach my $f($person->fams()) {
+		@children = (@children, $f->children());
+	}
+	if(scalar(@children)) {
+		print ', "children": [', "\n";
+		foreach my $child(@children) {
+			print_person({ person => $child, level => $level + 1 });
+		}
+		if($level == 1) {
+			print "\t]\n";
+		} else {
+			print "\t" x $level, ']},', "\n";
+		}
+	} elsif($level > 1) {
+		print "},\n";
+	} else {
+		print "\n";
+	}
+}
+
+sub Gedcom::Individual::as_string
+{
+	my $self = shift;
+	my %args = (ref($_[0]) eq 'HASH') ? %{$_[0]} : @_;
+
+	my $name = $self->name();
+
+	$name =~ s/\///g;
+	$nameparser->parse($name);
+
+	my %name_components = $nameparser->components();
+	my $first_name = $name_components{'given_name_1'};
+	my $middle_name = $name_components{'middle_name'};
+	my $surname = $name_components{'surname_1'};
+	if($name_components{'surname_2'}) {
+		$surname .= ' ' . $name_components{'surname_2'};
+	}
+	if($name_components{'non_matching'}) {
+		if($name =~ /(\w{2,})\s(\w{2,})\s(\w+)\s(\w{2,})/) {
+			# Name parser doesn't parse names like this very well
+			$first_name = $1;
+			$middle_name = "$2 $3";
+			$surname = $4;
+		} else {
+			if($surname) {
+				$surname .= ' ';
+			}
+			my $rest = $name_components{'non_matching'};
+			if($rest =~ /(.+) $/) {
+				$rest = $1;
+			}
+			$surname .= $rest;
+		}
+	} elsif(!defined($surname)) {
+		$surname = $self->surname();
+	}
+
+	my $has_maiden_name;
+	if($args{'nee'}) {
+		my $sex = get_value({ person => $self, value => 'sex' });
+		if(defined($sex) && ($sex eq 'F')) {
+			if(my $husband = $self->husband()) {
+				$surname = $husband->surname();
+				$has_maiden_name = 1;
+			} elsif(my $spouse = $self->spouse()) {
+				if($opts{'f'}) {
+					die 'married, but no husband relationship';
+				}
+				if($opts{'w'}) {
+					red_warning({ person => $self, warning => 'married, but no husband relationship' });
+				}
+				$surname = $spouse->surname();
+				$has_maiden_name = 1;
+			}
+		}
+	}
+
+	my $rc;
+
+	if($args{'title'}) {
+		$rc = $name_components{'title_1'};
+		if($rc) {
+			$rc .= ' ';
+		}
+	}
+
+	if($first_name) {
+		$rc .= $first_name;
+	} else {
+		$rc .= $self->given_names();
+	}
+
+	if($args{'middle_names'}) {
+		if($middle_name) {
+			$rc .= " $middle_name";
+		} elsif($name =~ /\s([A-Z])\s.+/) {
+			# Just an initial has been given
+			$rc .= " $1";
+		}
+	}
+
+	if($surname) {
+		if($rc) {
+			$rc .= ' ';
+		}
+		$rc .= normalize_name($surname);
+		if(my $suffix = $name_components{'suffix'}) {
+			$rc .= " $suffix";
+		}
+	}
+
+	if($has_maiden_name && $self->surname()) {
+		$rc .= ' (nee ' . normalize_name($self->surname()) . ')';
+	}
+
+	if(!defined($rc)) {
+		if($opts{'f'}) {
+			die "Can't determine name of this person";
+		}
+		if($opts{'w'}) {
+			red_warning({ warning => "Can't determine name of this person" });
+			$args{'include_years'} = 1;
+			$rc = 'Unknown person ';
+		}
+	}
+	if($args{'include_years'}) {
+		my $dob = get_value({ person => $self, value => 'birth date' });
+
+		my $yob;	# Year of birth
+		if($dob && ($dob =~ /.*?(\d{3,4})/)) {
+			if($dob =~ /^(Abt|ca?)\.?\s*(.+)/i) {
+				$yob = "c$2";
+			} else {
+				$yob = $1;
+			}
+		} else {
+			$dob = get_value({ person => $self, value => 'baptism date' });
+			if($dob && ($dob =~ /.*?(\d{3,4})/)) {
+				$yob = "c$1";
+			}
+		}
+
+		my $dod = get_value({ person => $self, value => 'death date' });
+
+		my $yod;	# Year of death
+		if($dod && ($dod =~ /.*?(\d{3,4})/)) {
+			$yod = $1;
+		} else {
+			$dod = get_value({ person => $self, value => 'burial date' });
+			if($dod && ($dod =~ /.*?(\d{3,4})/)) {
+				$yod = "c$1";
+			}
+		}
+
+		$rc .= ' ' if($yob || $yod);
+
+		if($yob) {
+			$rc .= "$yob ";
+		}
+
+		$rc .= '-' if($yob || $yod);
+
+		if($yod) {
+			return "$rc $yod";
+		}
+	}
+
+	return $rc;
+}
+
+sub normalize_name
+{
+	# my $name = shift;
+
+	# my $rc;
+	# foreach my $word(split(/-| |'/, lc($name))) {
+		# $rc .= '-' if($rc && ($name =~ /-/));
+		# $rc .= "'" if($rc && ($name =~ /'/));
+		# $rc .= ' ' if($rc && ($name =~ / /));
+		# $rc .= ucfirst($word);
+	# }
+
+	# return $rc;
+
+	return Lingua::EN::NameCase::nc(shift);
+}

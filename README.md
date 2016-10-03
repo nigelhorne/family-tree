@@ -11,3 +11,5 @@ An example for some relation data is provided in `family_tree.js`.
 * Add dynamic sizing, panning, and zooming.
 * Add more person information like birth/death dates, marriage history, pictures and titles.
 * Editing and HTML localStorage.
+
+Nigel Horne added "radial" a script to generate a family-tree.js from a Gedcom
