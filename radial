@@ -28,8 +28,8 @@ use Lingua::EN::NameParse;
 no lib '.';
 
 my %opts;
-getopts('lp:', \%opts);
-die "Usage: $0 [ -l ] [ -p person-to-print ] filename\n" unless($ARGV[0]);
+getopts('lm:p:', \%opts);
+die "Usage: $0 [ -l ] [ -m max-generations ] -p person-to-print filename\n" unless($ARGV[0]);
 
 my $home;
 
@@ -55,9 +55,10 @@ sub print_person
 	my $person = $params{'person'} or die "Who do you want to print?";
 	my $level = $params{'level'} || 1;
 
-	print "\t" x $level;
+	return if($opts{'m'} && ($level > $opts{'m'}));
 
-	print '{"name": "', $person->as_string(), '"';
+	print "\t" x $level,
+		'{"name": "', $person->as_string(), '"';
 
 	if(my $spouse = $person->spouse()) {
 		print ', "spouse": "', $spouse->as_string(), '"';
