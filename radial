@@ -127,7 +127,7 @@ sub Gedcom::Individual::as_string
 
 	my $has_maiden_name;
 	if($args{'nee'}) {
-		my $sex = get_value({ person => $self, value => 'sex' });
+		my $sex = $self->get_value('sex');
 		if(defined($sex) && ($sex eq 'F')) {
 			if(my $husband = $self->husband()) {
 				$surname = $husband->surname();
@@ -194,7 +194,7 @@ sub Gedcom::Individual::as_string
 		}
 	}
 	if($args{'include_years'}) {
-		my $dob = get_value({ person => $self, value => 'birth date' });
+		my $dob = $self->get_value('birth date');
 
 		my $yob;	# Year of birth
 		if($dob && ($dob =~ /.*?(\d{3,4})/)) {
@@ -204,19 +204,19 @@ sub Gedcom::Individual::as_string
 				$yob = $1;
 			}
 		} else {
-			$dob = get_value({ person => $self, value => 'baptism date' });
+			my $dob = $self->get_value('baptism date');
 			if($dob && ($dob =~ /.*?(\d{3,4})/)) {
 				$yob = "c$1";
 			}
 		}
 
-		my $dod = get_value({ person => $self, value => 'death date' });
+		my $dod = $self->get_value('death date');
 
 		my $yod;	# Year of death
 		if($dod && ($dod =~ /.*?(\d{3,4})/)) {
 			$yod = $1;
 		} else {
-			$dod = get_value({ person => $self, value => 'burial date' });
+			my $dod = $self->get_value('burial date');
 			if($dod && ($dod =~ /.*?(\d{3,4})/)) {
 				$yod = "c$1";
 			}
