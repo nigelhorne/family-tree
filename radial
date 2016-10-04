@@ -63,7 +63,8 @@ sub print_person
 	print "\t" x $level,
 		'{"name": "', $person->as_string(), '"';
 
-	if(my $spouse = $person->spouse()) {
+	my @spouses = $person->spouse();
+	if(my $spouse = pop @spouses) {	# Display the last spouse - seems no way to display them all
 		print ', "spouse": "', $spouse->as_string(), '"';
 	}
 
@@ -94,6 +95,12 @@ sub Gedcom::Individual::as_string
 	my %args = (ref($_[0]) eq 'HASH') ? %{$_[0]} : @_;
 
 	my $name = $self->name();
+
+	if(my $n2 = $self->tag_record('NAME', 2)) {
+		if((ref($n2) eq 'Gedcom::Record') && defined($n2->type()) && ($n2->type() eq 'AlsoKnownAs')) {
+			$name = $n2->value();
+		}
+	}
 
 	$name =~ s/\///g;
 	$nameparser->parse($name);
