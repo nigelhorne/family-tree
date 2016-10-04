@@ -61,11 +61,11 @@ sub print_person
 	}
 
 	print "\t" x $level,
-		'{"name": "', $person->as_string(), '"';
+		'{"name": "', $person->as_string(use_aka => 1), '"';
 
 	my @spouses = $person->spouse();
 	if(my $spouse = pop @spouses) {	# Display the last spouse - seems no way to display them all
-		print ', "spouse": "', $spouse->as_string(), '"';
+		print ', "spouse": "', $spouse->as_string(use_aka => 1), '"';
 	}
 
 	my @children;
@@ -94,12 +94,15 @@ sub Gedcom::Individual::as_string
 	my $self = shift;
 	my %args = (ref($_[0]) eq 'HASH') ? %{$_[0]} : @_;
 
-	my $name = $self->name();
+	my $name;
 
-	if(my $n2 = $self->tag_record('NAME', 2)) {
+	if($args{'use_aka'} && (my $n2 = $self->tag_record('NAME', 2))) {
 		if((ref($n2) eq 'Gedcom::Record') && defined($n2->type()) && ($n2->type() eq 'AlsoKnownAs')) {
 			$name = $n2->value();
 		}
+		return unless($name);
+	} else {
+		$name = $self->name();
 	}
 
 	$name =~ s/\///g;
@@ -140,7 +143,7 @@ sub Gedcom::Individual::as_string
 				$surname = $husband->surname();
 				$has_maiden_name = 1;
 			} elsif(my $spouse = $self->spouse()) {
-				warn $self->as_string, 'married, but no husband relationship';
+				warn $self->as_string(), 'married, but no husband relationship';
 				$surname = $spouse->surname();
 				$has_maiden_name = 1;
 			}

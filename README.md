@@ -16,3 +16,6 @@ An example for some relation data is provided in `family_tree.js`.
 * Editing and HTML localStorage.
 
 Nigel Horne added "radial" a script to generate a family-tree.js from a Gedcom
+
+## BUGS
+* Assumes people are only married once
