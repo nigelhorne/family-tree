@@ -12,6 +12,9 @@
 
 # Generate a family-tree.js file for the given person from the given Gedcom
 
+# FIXME: Show all marriages
+# TODO: Only show first names of direct descendents. It will help with space.
+
 use strict;
 use warnings;
 use autodie qw(:all);
