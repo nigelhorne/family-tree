@@ -81,7 +81,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 			{
 				center = translate(reference, center);
 				ctx_lines.beginPath();
-				ctx_lines.arc(center[X], center[Y], radius, 0, Math.PI*2, true); 
+				ctx_lines.arc(center[X], center[Y], radius, 0, Math.PI*2, true);
 				ctx_lines.closePath();
 				ctx_lines.stroke();
 			}
@@ -126,7 +126,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 					draw_segment(reference, c, angle, distance+delta[DISTANCE], display_loc, delta)
 					angle += c['width']*delta[ANGLE];
 				}
-				
+
 				display_text(reference, display_loc, data);
 				console.log(data["name"], data["spouse"], display_loc[0]-180.0, display_loc[1]);
 			}

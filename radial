@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 
 # Author Nigel Horne: njh@bandsman.co.uk
-# Copyright (C) 2016, Nigel Horne
+# Copyright (C) 2016-2017, Nigel Horne
 
 # Usage is subject to licence terms.
 # The licence terms of this software are as follows:
@@ -11,8 +11,6 @@
 #	above e-mail.
 
 # Generate a family-tree.js file for the given person from the given Gedcom
-
-# TODO: -add -m for maximum generations
 
 use strict;
 use warnings;
@@ -36,11 +34,23 @@ my $ged = Gedcom->new(gedcom_file => $ARGV[0], read_only => 1);
 
 die "-p is not optional" unless($opts{p});
 
-unless($home = $ged->get_individual($opts{p})) {
-	die "$0: Can't find '$opts{h}' in $ARGV[0]";
-}
-
 my $nameparser = Lingua::EN::NameParse->new(extended_titles => 1, initials => 1);
+
+my @rc = $ged->get_individual($opts{p});
+
+if(scalar(@rc) == 0) {
+	die "$0: Can't find '$opts{p}' in $ARGV[0]";
+} elsif(scalar(@rc) == 1) {
+	$home = $rc[0];
+} else {
+	my $i = 0;
+	print STDERR join("\n", map { $i++; "$i: " . $_->as_string({ include_years => 1, middle_names => 1 }) } @rc),
+		"\nMore than one $opts{p} found - choose a line number: ";
+	$i = <STDIN>;
+	chomp $i;
+	$home = $rc[$i - 1];
+	die "Incorrect line number" unless($home);
+}
 
 print "var family_tree = \n";
 print_person(person => $home);
