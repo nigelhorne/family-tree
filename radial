@@ -82,6 +82,8 @@ sub print_person
 		if($name =~ /^(\w+)/) {
 			$name = $1;
 		}
+	} elsif($level == 1) {
+		$name = $person->as_string(use_aka => 1);
 	} else {
 		$name = $person->given_names();
 	}
