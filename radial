@@ -73,11 +73,62 @@ sub print_person
 		return unless($person->get_value('death date'));
 	}
 
-	print "\t" x $level,
-		'{"name": "', $person->as_string(use_aka => 1), '"';
+	# print "\t" x $level,
+		# '{"name": "', $person->as_string(use_aka => 1), '"';
+	my $name;
+	my $n2 = $person->tag_record('NAME', 2);
+	if(defined($n2) && (ref($n2) eq 'Gedcom::Record') && defined($n2->type()) && ($n2->type() eq 'AlsoKnownAs')) {
+		$name = $n2->value();
+		if($name =~ /^(\w+)/) {
+			$name = $1;
+		}
+	} else {
+		$name = $person->given_names();
+	}
+	print "\t" x $level, "{\"name\": \"$name\"";
 
+	# Choose which spouse to print.  If all children are from one parent, choose that
+	# one, otherwise choose the last.
+	# There seems to be no way to display all the spouses
 	my @spouses = $person->spouse();
-	if(my $spouse = pop @spouses) {	# Display the last spouse - seems no way to display them all
+	my %childrenbyspouse;
+	my $childrenseen = 0;
+	my $unknown;
+	my $sex = $person->sex();
+	my $spouse;
+	foreach my $family ($person->fams()) {
+		if($family->number_of_children() &&
+		   ($spouse = ($sex eq 'M') ? $family->wife() : $family->husband())) {
+			my $spouse = ($sex eq 'M') ? $family->wife() : $family->husband();
+			foreach my $child($person->children()) {
+				$unknown = $child;
+				foreach my $spouseschild($spouse->children()) {
+					if($spouseschild eq $child) {
+						$childrenbyspouse{$spouse}++;
+						$childrenseen++;
+						$unknown = undef;
+						last;
+					}
+				}
+			}
+		}
+	}
+	my $parentofall;
+	foreach $spouse(@spouses) {
+		if($parentofall && $childrenbyspouse{$spouse}) {
+			$parentofall = undef;
+			last;
+		}
+		if($childrenbyspouse{$spouse}) {
+			$parentofall = $spouse;
+		}
+	}
+	if($parentofall) {
+		$spouse = $parentofall;
+	} else {
+		$spouse = pop @spouses;
+	}
+	if($spouse) {
 		print ', "spouse": "', $spouse->as_string(use_aka => 1), '"';
 	}
 
