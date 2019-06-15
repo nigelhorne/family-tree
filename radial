@@ -13,6 +13,9 @@
 # Generate a desendent family-tree.js file for the given person from the given
 #	Gedcom
 
+# FIXME: Show all marriages
+# TODO: Only show first names of direct descendents. It will help with space.
+
 # -l: include living people
 use strict;
 use warnings;
@@ -31,13 +34,13 @@ getopts('lm:p:', \%opts);
 
 die "Usage: $0 [ -l ] [ -m max-generations ] -p person-to-print filename\n" unless($ARGV[0]);
 
+die "-p is not optional" unless($opts{p});
+
 my $ged = Gedcom->new(gedcom_file => $ARGV[0], read_only => 1);
 
-die '-p is not optional' unless($opts{p});
-
 my $home;
-my @rc = $ged->get_individual($opts{p});
 my $nameparser = Lingua::EN::NameParse->new(extended_titles => 1, initials => 1);
+my @rc = $ged->get_individual($opts{p});
 
 if(scalar(@rc) == 0) {
 	die "$0: Can't find '$opts{p}' in $ARGV[0]";
@@ -45,15 +48,15 @@ if(scalar(@rc) == 0) {
 	$home = $rc[0];
 } else {
 	my $i = 0;
-	print join("\n", map { $i++; "$i: " . $_->as_string({ include_years => 1, middle_names => 1 }) } @rc),
+	print STDERR join("\n", map { $i++; "$i: " . $_->as_string({ include_years => 1, middle_names => 1 }) } @rc),
 		"\nMore than one $opts{p} found - choose a line number: ";
 	$i = <STDIN>;
 	chomp $i;
 	$home = $rc[$i - 1];
-	die 'Incorrect line number' unless($home);
+	die "Incorrect line number" unless($home);
 }
 
-print "var family_tree = \n";
+print "var family_tree =\n";
 print_person(person => $home);
 print "}\n";
 
@@ -71,11 +74,64 @@ sub print_person
 		return unless($person->get_value('death date'));
 	}
 
-	print "\t" x $level,
-		'{"name": "', $person->as_string(use_aka => 1), '"';
+	# print "\t" x $level,
+		# '{"name": "', $person->as_string(use_aka => 1), '"';
+	my $name;
+	my $n2 = $person->tag_record('NAME', 2);
+	if(defined($n2) && (ref($n2) eq 'Gedcom::Record') && defined($n2->type()) && ($n2->type() eq 'AlsoKnownAs')) {
+		$name = $n2->value();
+		if($name =~ /^(\w+)/) {
+			$name = $1;
+		}
+	} elsif($level == 1) {
+		$name = $person->as_string(use_aka => 1);
+	} else {
+		$name = $person->given_names();
+	}
+	print "\t" x $level, "{\"name\": \"$name\"";
 
+	# Choose which spouse to print.  If all children are from one parent, choose that
+	# one, otherwise choose the last.
+	# There seems to be no way to display all the spouses
 	my @spouses = $person->spouse();
-	if(my $spouse = pop @spouses) {	# Display the last spouse - seems no way to display them all
+	my %childrenbyspouse;
+	my $childrenseen = 0;
+	my $unknown;
+	my $sex = $person->sex();
+	my $spouse;
+	foreach my $family ($person->fams()) {
+		if($family->number_of_children() &&
+		   ($spouse = ($sex eq 'M') ? $family->wife() : $family->husband())) {
+			my $spouse = ($sex eq 'M') ? $family->wife() : $family->husband();
+			foreach my $child($person->children()) {
+				$unknown = $child;
+				foreach my $spouseschild($spouse->children()) {
+					if($spouseschild eq $child) {
+						$childrenbyspouse{$spouse}++;
+						$childrenseen++;
+						$unknown = undef;
+						last;
+					}
+				}
+			}
+		}
+	}
+	my $parentofall;
+	foreach $spouse(@spouses) {
+		if($parentofall && $childrenbyspouse{$spouse}) {
+			$parentofall = undef;
+			last;
+		}
+		if($childrenbyspouse{$spouse}) {
+			$parentofall = $spouse;
+		}
+	}
+	if($parentofall) {
+		$spouse = $parentofall;
+	} else {
+		$spouse = pop @spouses;
+	}
+	if($spouse) {
 		print ', "spouse": "', $spouse->as_string(use_aka => 1), '"';
 	}
 
