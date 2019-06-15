@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 
 # Author Nigel Horne: njh@bandsman.co.uk
-# Copyright (C) 2016, Nigel Horne
+# Copyright (C) 2016-2019, Nigel Horne
 
 # Usage is subject to licence terms.
 # The licence terms of this software are as follows:
@@ -10,10 +10,10 @@
 #	must apply in writing for a licence for use from Nigel Horne at the
 #	above e-mail.
 
-# Generate a family-tree.js file for the given person from the given Gedcom
+# Generate a desendent family-tree.js file for the given person from the given
+#	Gedcom
 
-# TODO: -add -m for maximum generations
-
+# -l: include living people
 use strict;
 use warnings;
 use autodie qw(:all);
@@ -28,19 +28,30 @@ no lib '.';
 
 my %opts;
 getopts('lm:p:', \%opts);
-die "Usage: $0 [ -l ] [ -m max-generations ] -p person-to-print filename\n" unless($ARGV[0]);
 
-my $home;
+die "Usage: $0 [ -l ] [ -m max-generations ] -p person-to-print filename\n" unless($ARGV[0]);
 
 my $ged = Gedcom->new(gedcom_file => $ARGV[0], read_only => 1);
 
-die "-p is not optional" unless($opts{p});
+die '-p is not optional' unless($opts{p});
 
-unless($home = $ged->get_individual($opts{p})) {
-	die "$0: Can't find '$opts{h}' in $ARGV[0]";
-}
-
+my $home;
+my @rc = $ged->get_individual($opts{p});
 my $nameparser = Lingua::EN::NameParse->new(extended_titles => 1, initials => 1);
+
+if(scalar(@rc) == 0) {
+	die "$0: Can't find '$opts{p}' in $ARGV[0]";
+} elsif(scalar(@rc) == 1) {
+	$home = $rc[0];
+} else {
+	my $i = 0;
+	print join("\n", map { $i++; "$i: " . $_->as_string({ include_years => 1, middle_names => 1 }) } @rc),
+		"\nMore than one $opts{p} found - choose a line number: ";
+	$i = <STDIN>;
+	chomp $i;
+	$home = $rc[$i - 1];
+	die 'Incorrect line number' unless($home);
+}
 
 print "var family_tree = \n";
 print_person(person => $home);
@@ -51,7 +62,7 @@ sub print_person
 	my %params = (ref($_[0]) eq 'HASH') ? %{$_[0]} : @_;
 
 	# Gather the information on this person
-	my $person = $params{'person'} or die "Who do you want to print?";
+	my $person = $params{'person'} or die 'Who do you want to print?';
 	my $level = $params{'level'} || 1;
 
 	return if($opts{'m'} && ($level > $opts{'m'}));
@@ -68,10 +79,11 @@ sub print_person
 		print ', "spouse": "', $spouse->as_string(use_aka => 1), '"';
 	}
 
-	my @children;
-	foreach my $f($person->fams()) {
-		@children = (@children, $f->children());
-	}
+	# my @children;
+	# foreach my $f($person->fams()) {
+		# @children = (@children, $f->children());
+	# }
+	my @children = map { $_->children() } $person->fams();
 	if(scalar(@children)) {
 		print ', "children": [', "\n";
 		foreach my $child(@children) {
