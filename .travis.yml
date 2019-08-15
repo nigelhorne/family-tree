@@ -39,7 +39,8 @@ jobs:
         - cinst -y strawberryperl
         - export "PATH=/c/Strawberry/perl/site/bin:/c/Strawberry/perl/bin:/c/Strawberry/c/bin:$PATH"
       install:
-        - cpanm --notest --installdeps .
+        # - cpanm --notest --installdeps .
+	- cpanm --skip-satisfied -n -q Gedcom Getopt::Std Lingua::EN::NameCase Lingua::EN::NameParse warnings::unused autodie IPC::System::Simple B::Lint
       script:
         - perl Makefile.PL
         - gmake
