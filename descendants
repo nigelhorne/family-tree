@@ -10,11 +10,11 @@
 #	must apply in writing for a licence for use from Nigel Horne at the
 #	above e-mail.
 
-# Generate a desendent family-tree.js file for the given person from the given
+# Generate a descendant family-tree.js file for the given person from the given
 #	Gedcom
 
 # FIXME: Show all marriages
-# TODO: Only show first names of direct descendents. It will help with space.
+# TODO: Only show first names of direct descendants. It will help with space.
 
 # -l: include living people
 use strict;
